@@ -1,0 +1,63 @@
+name: Build PMTiles for Ewilpa
+
+on:
+  workflow_dispatch:
+    inputs:
+      west:
+        description: 'Bounding box west (lon)'
+        required: true
+        default: '12.37'
+      south:
+        description: 'Bounding box south (lat)'
+        required: true
+        default: '49.90'
+      east:
+        description: 'Bounding box east (lon)'
+        required: true
+        default: '12.56'
+      north:
+        description: 'Bounding box north (lat)'
+        required: true
+        default: '50.05'
+      heap_gb:
+        description: 'Java heap GB (e.g. 8)'
+        required: true
+        default: '8'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Download Planetiler
+        run: |
+          curl -L https://github.com/onthegomap/planetiler/releases/latest/download/planetiler.jar -o planetiler.jar
+
+      - name: Build PMTiles (BBox)
+        run: |
+          W=${{ inputs.west }}
+          S=${{ inputs.south }}
+          E=${{ inputs.east }}
+          N=${{ inputs.north }}
+          HEAP=${{ inputs.heap_gb }}
+          echo "Bounds: $W,$S,$E,$N with heap ${HEAP}g"
+          java -Xmx${HEAP}g -jar planetiler.jar \
+            --download \
+            --bounds=$W,$S,$E,$N \
+            --output=ewilpa.pmtiles \
+            --format=pmtiles
+
+      - name: Upload PMTiles artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ewilpa-pmtiles
+          path: ewilpa.pmtiles
+          if-no-files-found: error
